@@ -1,2 +1,2 @@
-"C:\Users\VictorNguyenPC\AppData\Local\Programs\Python\Python37\python.exe" "C:\Users\VictorNguyenPC\Desktop\CS 446 Project\project.py"
+"C:\Users\Victor Nguyen\AppData\Local\Programs\Python\Python39\python.exe" "C:\Users\Victor Nguyen\Desktop\CS-446-Project-4\project.py"
 pause

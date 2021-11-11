@@ -7,7 +7,25 @@ import logging
 import boto3
 import json
 import os
-from botocore.exceptions import ClientError
+import threading
+import sys
+import shutil
+# from botocore.exceptions import ClientError
+
+class ProgressPercentage(object):
+    def __init__(self, filename):
+        self._filename = filename
+        self._size = float(os.path.getsize(filename))
+        self._seen_so_far = 0
+        self._lock = threading.Lock()
+
+    def __call__(self, bytes_amount):
+        with self._lock:
+            self._seen_so_far += bytes_amount
+            percentage = (self._seen_so_far / self._size) * 100
+            print(f'{self._filename} {round((self._seen_so_far / 1000000), 2)}MB/{round((self._size / 1000000),2)}MB {percentage}%')
+            # sys.stdout.write("\r%s %s (%.2f%%)" % (self._filename, self._seen_so_far, self._size, percentage))
+            # sys.stdout.flush()
 
 def main():
     currentDir = os.getcwd()
@@ -43,14 +61,19 @@ def main():
     #     j += 1
 
     response = s3.list_objects(Bucket = BUCKET_NAME) #Getting objects from bucket
-    response = response['Contents']
-    print(f"Objects in '{BUCKET_NAME}'")
-    i = 0
-    for x in response:
-        i += 1
-        print(str(i) + "." + x["Key"])
+    # print(response)
+    try:
+        response = response['Contents']
+        print(f"Objects in '{BUCKET_NAME}'")
+        i = 0
+        for x in response:
+            i += 1
+            print(str(i) + "." + x["Key"] + " [SIZE]: " + convertMetric(x["Size"]) + " [LINK]: " + s3.generate_presigned_url('get_object', Params={'Bucket': BUCKET_NAME, 'Key': x["Key"]}, ExpiresIn=3600))
+    except:
+        print(f'{BUCKET_NAME} is empty!')
+
     print("You can now upload to the bucket! Drag and drop file into 'Upload' folder")
-    # input("Press enter to continue...")
+    input("Press enter to continue...")
     ##this is where you implement a loop to go through the file directory and upload each file one by one and move to done folder
     if len(os.listdir(f'{currentDir}\\Upload\\')) == 0:
         print("There's nothing in the 'Upload' folder!  Please check again!")
@@ -58,17 +81,32 @@ def main():
         for file in os.listdir(f'{currentDir}\\Upload\\'):
             #print(file)
             fileAfter = f'Upload/{file}'
-            s3.upload_file(fileAfter, BUCKET_NAME, file)
+            s3.upload_file(fileAfter, BUCKET_NAME, file, Callback = ProgressPercentage(fileAfter))
             print(f'{file} uploaded successfully')
+            shutil.move(fileAfter,f'Done/{file}')
+            print(f"Moved file '{file}' to 'Done' folder!")
 
-    response = s3.list_objects(Bucket = BUCKET_NAME) #Getting objects from bucket
-    response = response['Contents']
-    print(f"UPDATED Objects in '{BUCKET_NAME}'")
-    i = 0
-    for x in response:
-        i += 1
-        print(str(i) + "." + x["Key"])
+    try:
+        response = s3.list_objects(Bucket = BUCKET_NAME)
+        response = response['Contents']
+        print(f"UPDATED Objects in '{BUCKET_NAME}'")
+        i = 0
+        for x in response:
+            i += 1
+            print(str(i) + "." + x["Key"] + " [SIZE]: " + convertMetric(x["Size"]) + " [LINK]: " + s3.generate_presigned_url('get_object', Params={'Bucket': BUCKET_NAME, 'Key': x["Key"]}, ExpiresIn=3600))
+    except:
+        print(f'{BUCKET_NAME} is empty!')
 
+    # response = s3.list_objects(Bucket = BUCKET_NAME) #Getting objects from bucket
+    # response = response['Contents']
+    # print(f"UPDATED Objects in '{BUCKET_NAME}'")
+    # i = 0
+    # for x in response:
+    #     i += 1
+    #     print(str(i) + "." + x["Key"])
+
+def convertMetric(number):
+    return (f"{round((number/1000000),2)} MB")
 
 #Uploads dumb shit
 # filename = 'Test/Ez.png'
