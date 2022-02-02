@@ -105,7 +105,6 @@ def main():
 def convertMetric(number):
     return (f"{round((number/1000000),2)} MB")
 
-#Uploads dumb shit
 # filename = 'Test/Ez.png'
 # s3.upload_file(filename,'cs446project4', "hi.png")
 
